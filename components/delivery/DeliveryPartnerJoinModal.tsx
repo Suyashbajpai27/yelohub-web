@@ -1,0 +1,366 @@
+"use client";
+
+import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
+
+import { cn } from "@/lib/utils";
+
+type DeliveryPartnerJoinModalProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  className?: string;
+};
+
+type FormState = {
+  fullName: string;
+  email: string;
+  phone: string;
+  city: string;
+  state: string;
+  vehicleType: "Bike" | "Cycle" | "Scooter" | "Other" | "";
+  hasIdProof: boolean;
+  hasBankAccount: boolean;
+};
+
+const initialState: FormState = {
+  fullName: "",
+  email: "",
+  phone: "",
+  city: "",
+  state: "",
+  vehicleType: "",
+  hasIdProof: true,
+  hasBankAccount: true,
+};
+
+export function DeliveryPartnerJoinModal({
+  open,
+  onOpenChange,
+  className,
+}: DeliveryPartnerJoinModalProps) {
+  const titleId = useId();
+  const descId = useId();
+  const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
+  const [form, setForm] = useState<FormState>(initialState);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onOpenChange]);
+
+  useEffect(() => {
+    if (!open) {
+      setStatus("idle");
+      setForm(initialState);
+    }
+  }, [open]);
+
+  const canSubmit = useMemo(() => {
+    if (status === "submitting") return false;
+    return (
+      form.fullName.trim().length > 1 &&
+      /\S+@\S+\.\S+/.test(form.email) &&
+      form.phone.replace(/\D/g, "").length >= 10 &&
+      form.city.trim().length > 1 &&
+      form.state.trim().length > 1 &&
+      form.vehicleType !== ""
+    );
+  }, [form, status]);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) return;
+
+    setStatus("submitting");
+    await new Promise((r) => setTimeout(r, 650));
+    setStatus("success");
+    setTimeout(() => onOpenChange(false), 900);
+  }
+
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className={cn("fixed inset-0 z-[100] flex items-center justify-center px-4", className)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-[2px]"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close dialog"
+          />
+
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={descId}
+            className={cn(
+              "relative z-10 w-full max-w-[760px] overflow-hidden rounded-[28px] border border-white/10 bg-white shadow-2xl",
+              "ring-1 ring-black/5",
+            )}
+            initial={{ y: 14, opacity: 0, scale: 0.985 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 10, opacity: 0, scale: 0.99 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div
+              className="relative overflow-hidden px-6 pb-6 pt-6 text-white md:px-7"
+              style={{
+                backgroundImage: "url('/assets/images/fresh-green-textured.jpg')",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <div className="pointer-events-none absolute inset-0 bg-[#0B6F1C]/70" aria-hidden />
+              <div className="pointer-events-none absolute -right-24 -top-24 size-64 rounded-full bg-white/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-24 -left-24 size-64 rounded-full bg-[#00A14E]/25 blur-3xl" />
+
+              <div className="relative flex items-start justify-between gap-4">
+                <div>
+                  <h2 id={titleId} className="text-2xl font-semibold leading-tight">
+                    Join as a delivery partner
+                  </h2>
+                  <p id={descId} className="mt-1 text-sm text-white/85">
+                    Fill the basic details and we&apos;ll contact you for onboarding.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  className="inline-flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  aria-label="Close"
+                >
+                  <X className="size-5" aria-hidden />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={onSubmit} className="px-6 pb-6 pt-6 md:px-7 md:pb-7">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Field
+                  label="Full name"
+                  value={form.fullName}
+                  onChange={(v) => setForm((s) => ({ ...s, fullName: v }))}
+                  placeholder="e.g. Rahul Kumar"
+                  autoComplete="name"
+                  required
+                />
+                <Field
+                  label="Email"
+                  value={form.email}
+                  onChange={(v) => setForm((s) => ({ ...s, email: v }))}
+                  placeholder="e.g. rahul@email.com"
+                  autoComplete="email"
+                  type="email"
+                  required
+                />
+                <Field
+                  label="Mobile number"
+                  value={form.phone}
+                  onChange={(v) => setForm((s) => ({ ...s, phone: v }))}
+                  placeholder="e.g. +91 98765 43210"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  required
+                />
+                <Select
+                  label="Vehicle type"
+                  value={form.vehicleType}
+                  onChange={(v) => setForm((s) => ({ ...s, vehicleType: v }))}
+                  required
+                  options={["Bike", "Cycle", "Scooter", "Other"]}
+                />
+                <Field
+                  label="City"
+                  value={form.city}
+                  onChange={(v) => setForm((s) => ({ ...s, city: v }))}
+                  placeholder="City"
+                  autoComplete="address-level2"
+                  required
+                />
+                <Field
+                  label="State"
+                  value={form.state}
+                  onChange={(v) => setForm((s) => ({ ...s, state: v }))}
+                  placeholder="State"
+                  autoComplete="address-level1"
+                  required
+                />
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <Toggle
+                  label="Valid ID proof available"
+                  checked={form.hasIdProof}
+                  onChange={(checked) => setForm((s) => ({ ...s, hasIdProof: checked }))}
+                />
+                <Toggle
+                  label="Bank details available"
+                  checked={form.hasBankAccount}
+                  onChange={(checked) => setForm((s) => ({ ...s, hasBankAccount: checked }))}
+                />
+              </div>
+
+              <div className="mt-6 flex flex-col-reverse gap-3 md:flex-row md:items-center md:justify-between">
+                <p className="text-xs text-zinc-500">
+                  By submitting, you agree to be contacted about onboarding.
+                </p>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => onOpenChange(false)}
+                    className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!canSubmit}
+                    className={cn(
+                      "inline-flex h-11 items-center justify-center rounded-full bg-[#00A14E] px-6 text-sm font-semibold text-white shadow-sm",
+                      "transition-all duration-200 will-change-transform hover:-translate-y-0.5 hover:bg-[#008f44] hover:shadow-md active:translate-y-0",
+                      "disabled:pointer-events-none disabled:opacity-60",
+                    )}
+                  >
+                    {status === "success"
+                      ? "Submitted!"
+                      : status === "submitting"
+                        ? "Submitting…"
+                        : "Submit"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  required,
+  type = "text",
+  autoComplete,
+  inputMode,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  type?: React.InputHTMLAttributes<HTMLInputElement>["type"];
+  autoComplete?: string;
+  inputMode?: React.InputHTMLAttributes<HTMLInputElement>["inputMode"];
+}) {
+  const id = useId();
+  return (
+    <div>
+      <label htmlFor={id} className="text-sm font-semibold text-zinc-800">
+        {label}
+        {required ? <span className="text-[#00A14E]"> *</span> : null}
+      </label>
+      <input
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        type={type}
+        inputMode={inputMode}
+        autoComplete={autoComplete}
+        className={cn(
+          "mt-2 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 shadow-sm",
+          "outline-none transition focus:border-[#00A14E]/50 focus:ring-2 focus:ring-[#00A14E]/15",
+          "placeholder:text-zinc-400",
+        )}
+      />
+    </div>
+  );
+}
+
+function Select({
+  label,
+  value,
+  onChange,
+  required,
+  options,
+}: {
+  label: string;
+  value: FormState["vehicleType"];
+  onChange: (value: FormState["vehicleType"]) => void;
+  required?: boolean;
+  options: Array<Exclude<FormState["vehicleType"], "">>;
+}) {
+  const id = useId();
+  return (
+    <div>
+      <label htmlFor={id} className="text-sm font-semibold text-zinc-800">
+        {label}
+        {required ? <span className="text-[#00A14E]"> *</span> : null}
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value as FormState["vehicleType"])}
+        required={required}
+        className={cn(
+          "mt-2 h-11 w-full appearance-none rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 shadow-sm",
+          "outline-none transition focus:border-[#00A14E]/50 focus:ring-2 focus:ring-[#00A14E]/15",
+        )}
+      >
+        <option value="" disabled>
+          Select
+        </option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function Toggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const id = useId();
+  return (
+    <label
+      htmlFor={id}
+      className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+    >
+      <span className="font-semibold">{label}</span>
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="size-5 accent-[#00A14E]"
+      />
+    </label>
+  );
+}
+
